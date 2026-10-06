@@ -5,7 +5,7 @@ name: options-pipeline
 
 on:
   schedule:
-    - cron: "45 21 * * 1-5"      # 21:45 UTC weekdays = 17:45 ET (EDT) / 16:45 ET (EST): after the 16:15 ET options close, final quotes
+    - cron: "45 19 * * 1-5"      # 19:45 UTC weekdays = 15:45 ET (EDT) / 14:45 ET (EST): market open, quotes two-sided
   workflow_dispatch: {}           # run by hand from the Actions tab
 
 permissions:
