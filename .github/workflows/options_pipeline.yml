@@ -1,0 +1,44 @@
+# Save as .github/workflows/options_pipeline.yml in the (private) data repo.
+# Put options_pipeline.py at scripts/options_pipeline.py in the same repo.
+# Add a repository secret FRED_API_KEY (Settings > Secrets and variables > Actions) for the risk-free rate.
+name: options-pipeline
+
+on:
+  schedule:
+    - cron: "45 19 * * 1-5"      # 19:45 UTC weekdays = 15:45 ET (EDT) / 14:45 ET (EST): market open, quotes two-sided
+  workflow_dispatch: {}           # run by hand from the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: options-pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests pandas pyarrow numpy scipy yfinance curl_cffi
+
+      - name: Run pipeline
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python scripts/options_pipeline.py
+
+      - name: Commit data
+        run: |
+          git config user.name "options-cache-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/options_cache
+          git diff --cached --quiet || git commit -m "options pipeline $(date -u +%F)"
+          git pull --rebase
+          git push
