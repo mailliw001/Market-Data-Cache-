@@ -49,7 +49,7 @@ pd.set_option("display.width", 220)
 pd.set_option("display.max_columns", 50)
 
 # ----------------------------- SETTINGS -----------------------------
-UNDERLYINGS = ["SPY", "QQQ", "IWM", "IEF", "TLT", "GLD", "USO"]    # option-able tickers; add yours (not the VIX: futures-settled)
+UNDERLYINGS = ["SPY", "QQQ", "IWM", "IEF", "TLT", "GLD", "USO", "XLE"]    # option-able tickers; add yours (not the VIX: futures-settled)
 SOURCES = ["yahoo", "cboe"]
 OUT_DIR = Path(os.environ.get("OPTIONS_CACHE_DIR", "data/options_cache"))
 TENORS = [30, 90]                       # target days to expiry; the full density is computed at each
