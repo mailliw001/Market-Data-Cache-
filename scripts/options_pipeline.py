@@ -49,7 +49,7 @@ pd.set_option("display.width", 220)
 pd.set_option("display.max_columns", 50)
 
 # ----------------------------- SETTINGS -----------------------------
-UNDERLYINGS = ["SPY", "QQQ", "IWM", "IEF", "TLT", "GLD", "USO", "XLE", "FXE", "FXY", "FXB"]  # option-able tickers; add yours (not the VIX: futures-settled)
+UNDERLYINGS = ["SPY", "QQQ", "IWM", "IEF", "TLT", "GLD", "USO"]    # option-able tickers; add yours (not the VIX: futures-settled)
 SOURCES = ["yahoo", "cboe"]
 OUT_DIR = Path(os.environ.get("OPTIONS_CACHE_DIR", "data/options_cache"))
 TENORS = [30, 90]                       # target days to expiry; the full density is computed at each
@@ -67,6 +67,7 @@ GRID_POINTS = 400
 FD_STEP_FRACTION = 0.001
 PERCENTILES = [5, 16, 25, 50, 75, 84, 95]
 MIN_USABLE_PER_WING = 10
+MIN_USABLE_OVERRIDE = {"IEF": 8}        # sparse strike grids (IEF has about 17-18 usable strikes); a data-availability fix, not a tuned result
 MIN_IV = 0.03
 MIN_OPTION_PRICE = 0.05
 MIN_PLAUSIBLE_ATM_IV, MAX_PLAUSIBLE_ATM_IV = 0.05, 1.50
@@ -263,7 +264,7 @@ def density_from_smile(forward, r, T, grid, smile_fn):
     return dens / total
 
 
-def analyse_tenor(chain, spot, r, target):
+def analyse_tenor(chain, spot, r, target, min_wing=MIN_USABLE_PER_WING):
     exps = sorted(chain["expiry"].unique())
     dtes = {e: (pd.Timestamp(e).date() - RUN_DATE).days for e in exps}
     cands = [(e, d) for e, d in dtes.items() if d > 0]
@@ -280,8 +281,8 @@ def analyse_tenor(chain, spot, r, target):
     forward = estimate_forward(calls, puts, spot, r, T)
     rows = own_iv_wing(puts[puts["strike"] < spot], False, forward, r, T) + own_iv_wing(calls[calls["strike"] >= spot], True, forward, r, T)
     smile = pd.DataFrame(rows, columns=["strike", "iv"]).drop_duplicates("strike").sort_values("strike")
-    if len(smile) < 2 * MIN_USABLE_PER_WING:
-        raise ValueError(f"only {len(smile)} usable OTM strikes from live quotes (live-quote share {live_share:.0%}); market closed?")
+    if len(smile) < 2 * min_wing:
+        raise ValueError(f"only {len(smile)} usable OTM strikes from live quotes (need {2 * min_wing}; live-quote share {live_share:.0%}): thin chain or stale quotes")
     smile = clean_outliers(smile)
     smile_fn = fit_smile(smile, forward)
     atm_iv = float(smile_fn(forward))
@@ -363,7 +364,7 @@ for sym in UNDERLYINGS:
             continue
         for tgt in TENORS:
             try:
-                res = analyse_tenor(chain, spot, r, tgt)
+                res = analyse_tenor(chain, spot, r, tgt, MIN_USABLE_OVERRIDE.get(sym, MIN_USABLE_PER_WING))
                 rows.append({"run_date": RUN_DATE.isoformat(), "source": source, "underlying": sym, "tenor_target": tgt,
                              "snapshot_time": stamp, **res})
                 print(f"ok   {sym:<4} {source:<5} {tgt:>3}d exp {res['expiry']}  spot={spot:.2f} fwd={res['forward']:.2f}  "
