@@ -5,8 +5,9 @@ name: options-pipeline
 
 on:
   schedule:
-         - cron: "0 17 * * 1-5"    # 19:45 UTC weekdays = 15:45 ET (EDT) / 14:45 ET (EST): market open, quotes two-sided
-  workflow_dispatch: {}           # run by hand from the Actions tab
+    - cron: "23 17 * * 1-5"    # 17:23 UTC = 18:23 UK (BST) = 13:23 New York, market open
+    - cron: "47 18 * * 1-5"    # backup, 19:47 UK (BST); a same-day rerun just replaces that day's rows
+  workflow_dispatch: {}
 
 permissions:
   contents: write
